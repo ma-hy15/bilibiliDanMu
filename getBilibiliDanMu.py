@@ -15,7 +15,7 @@ def get_cid(BV,index=0):
     url = 'https://api.bilibili.com/x/player/pagelist?bvid='+BV+'&jsonp=jsonp'
     res = requests.get(url).text
     json_dict = json.loads(res)
-    # pprint(json_dict)
+    pprint(json_dict)
     # 对于多节的视频，根据序号i选择返回的cid，默认是0
     return json_dict["data"][index]["cid"]
 
@@ -29,9 +29,10 @@ def get_data(cid):
     final_res = final_res.text
     pattern = re.compile('<d.*?>(.*?)</d>')
     data = pattern.findall(final_res)
-    # pprint(final_res)
+    pprint(data)
     return data
 
 
-cid = get_cid(BV='BV1SK4y1M7Xj')
-get_data(cid)
+cid = get_cid(BV='BV1DZ4y1j7pK')
+print(cid)
+# get_data(cid)
