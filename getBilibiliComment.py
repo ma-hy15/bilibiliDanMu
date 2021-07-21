@@ -4,9 +4,11 @@
 # @Author  ：Ma Haoyu
 # @Date    ：2021/7/20 16:27 
 import json
+from datetime import datetime
 import requests
 import chardet
 import re
+import time
 from bs4 import BeautifulSoup
 from pprint import pprint
 
@@ -68,6 +70,70 @@ class BilibiliInfo(object):
         # pprint(data)
         return data
 
+    def getcomments(self):
+        comment_page = 1
+        comment_data_lst = []
+        while True:
+            try:
+                comment_url = 'https://api.bilibili.com/x/v2/reply/main?next={}&type={}&oid={}'.format(
+                    comment_page, 1, self.aid)
+                html = requests.get(url=comment_url, headers=self.dic_header)
+                # start = html.text.index('{')
+                # end = html.text.index('}]') + 1
+                comment_data = json.loads(html.text)['data']['replies']
+                # print(comment_data) #成功的转换为json数据
+                print(f'当前正在爬取第{comment_page}页评论数据...')
+                for data in comment_data:
+                    dic_coment = {}
+                    dic_coment['member'] = data['member']['uname']
+                    dic_coment['like'] = data['like']
+                    dic_coment['comment'] = data['content']['message']
+                    dic_coment['time'] = datetime.fromtimestamp(data['ctime'])
+                    dic_coment['rpid'] = data['rpid_str']
+                    comment_data_lst.append(dic_coment)
+                    print('昵称: {}\n点赞数：{}\n'.format(dic_coment['member'],
+                                                    dic_coment['like']))
+                    # 这个是下一步封装完爬取回复数据的函数后才添加的
+                    comment_data_lst.extend(self.get_replies(dic_coment['member'], dic_coment['rpid']))
+
+                time.sleep(1)
+                # 			if comment_page > 1:
+                # 				break
+                comment_page += 1
+
+            except Exception as Comment_Page_Error:
+                break
+
+        return comment_data_lst
+
+    def get_replies(self, uname, rpid):
+        reply_page = 1
+        reply_data_lst = []
+        while True:
+            print('正在爬取用户{}的评论回复数据中的第{}页......'.format(uname, reply_page))
+            reply_url = 'https://api.bilibili.com/x/v2/reply/reply?&pn={}&type=1&oid={}&ps=10&root={}'.format(
+                reply_page, self.aid, rpid)
+            html = requests.get(url=reply_url, headers=self.dic_header)
+            reply_data = html.json()['data']['replies']
+            try:
+                for data in reply_data:
+                    dic_reply = {}
+                    dic_reply['comment'] = data['content']['message']
+                    dic_reply['member'] = data['member']['uname']
+                    dic_reply['like'] = data['like']
+                    dic_reply['time'] = datetime.fromtimestamp(data['ctime'])
+                    reply_data_lst.append(dic_reply)
+                    print('回复{} 昵称: {}\n点赞数：{}\n'.format(uname, dic_reply['member'],
+                                                         dic_reply['like']))
+
+                # 			if reply_page > 1:
+                # 				break
+                reply_page += 1
+            except Exception as Reply_Page_Error:
+                break
+
+        return reply_data_lst
+
     def getinfo(self):
         base_info_url = f'https://api.bilibili.com/x/web-interface/archive/stat?aid={self.aid}'
         base_info = requests.get(base_info_url, headers=self.dic_header).json()['data']
@@ -108,15 +174,13 @@ class BilibiliInfo(object):
             return json_dict["data"][index]["cid"]
 
 
-
-
 if __name__ == '__main__':
-
     # oid = 369363302
     # get_base_info(oid)
-    a = BilibiliInfo(av=170001,index=-1)
+    a = BilibiliInfo(bv='BV1sq4y1H7tH', index=-1)
     # pprint(a.getbullet())
-    pprint(a.getinfo())
+    # pprint(a.getinfo())
+    # pprint(a.getcomments())
     # bvid = a.enc(170001)
     # pprint(type(a.get_cid(bvid, -1)))
     # pprint(type(a.get_cid(bvid, 0)))
